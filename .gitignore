@@ -1,0 +1,12 @@
+build/
+toolchain/
+logs/
+__pycache__/
+*.pyc
+*.apk
+*.jar
+*.jks
+*.keystore
+local.properties
+.env
+.env.*
