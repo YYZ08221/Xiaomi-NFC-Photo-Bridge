@@ -5,6 +5,7 @@ public final class CompletionWatch {
     public void start(long now,int window){this.window=window;deadline=now+120000;active=true;}
     public boolean active(long now){if(now>=deadline)active=false;return active;}
     public void clear(){active=false;}
+    public boolean sameWindow(int window){return this.window==window;}
     public boolean observe(long now,String pkg,int window,CharSequence status){
         if(!active(now)||this.window!=window||!"com.android.intentresolver".equals(pkg)||status==null)return false;
         String value=status.toString().trim();

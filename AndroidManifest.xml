@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="local.codex.xiaominfcprobe" android:versionCode="10" android:versionName="0.10-completion-polling-fix">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="local.codex.xiaominfcprobe" android:versionCode="12" android:versionName="0.12-release-stale-observer">
   <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
   <uses-permission android:name="com.miui.mishare.PERMISSION.ALL" />
   <uses-permission android:name="com.xiaomi.mi_connect_service.permission.RECEIVE_ENDPOINT" />

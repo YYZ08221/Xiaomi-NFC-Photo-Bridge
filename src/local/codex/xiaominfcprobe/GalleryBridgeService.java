@@ -14,6 +14,7 @@ public final class GalleryBridgeService extends AccessibilityService {
     private static GalleryBridgeService live;
     private final BridgeGate gate=new BridgeGate();private final Handler handler=new Handler(Looper.getMainLooper());
     private final CompletionWatch completion=new CompletionWatch();
+    private final ObserverDeparture departure=new ObserverDeparture();
     private File screenshotFile;private boolean waitingForCompletion;
     private AccessibilityNodeInfo trackedDeviceRow;
     private final PollDeadline pollDeadline=new PollDeadline();
@@ -25,6 +26,7 @@ public final class GalleryBridgeService extends AccessibilityService {
     public static boolean enabled(){return live!=null;}
     public static boolean arm(){
         if(live==null)return false;
+        if(live.waitingForCompletion&&!live.completion.active(now()))live.releaseObserver("deadline before new trigger");
         if(live.capturing||live.waitingForCompletion||live.gate.stage(now())!=BridgeGate.Stage.IDLE)return false;
         live.invocation++;
         live.screenshotFile=null;live.trackedDeviceRow=null;live.completion.clear();live.lastCompletionDiagnostic="";
@@ -49,6 +51,13 @@ public final class GalleryBridgeService extends AccessibilityService {
     public void onInterrupt(){Log.w("XiaomiNfcBridge","ACCESSIBILITY_INTERRUPTED");invocation++;capturing=false;waitingForCompletion=false;completion.clear();gate.clear();}
     public void onDestroy(){invocation++;completion.clear();gate.clear();handler.removeCallbacks(tick);if(live==this)live=null;super.onDestroy();}
     private void stop(String reason){invocation++;capturing=false;waitingForCompletion=false;completion.clear();gate.clear();Log.w("XiaomiNfcBridge",reason);Toast.makeText(this,reason,Toast.LENGTH_LONG).show();}
+    private void releaseObserver(String reason){
+        // This cancels UI observation only, not the system transfer. Unconfirmed files remain.
+        invocation++;waitingForCompletion=false;trackedDeviceRow=null;completion.clear();departure.clear();gate.clear();
+        handler.removeCallbacks(tick);pollDeadline.fired();
+        Log.i("XiaomiNfcBridge","OLD_OBSERVER_RELEASED reason="+reason+" temporaryScreenshotPreserved="+(screenshotFile!=null));
+        screenshotFile=null;
+    }
     private static String str(CharSequence c){return c==null?"":c.toString().trim();}
     private static boolean shareLabel(AccessibilityNodeInfo n){
         String t=str(n.getText()),d=str(n.getContentDescription());
@@ -171,6 +180,12 @@ public final class GalleryBridgeService extends AccessibilityService {
                 if(trackedDeviceRow!=null&&trackedDeviceRow.refresh())inspectCompletion(trackedDeviceRow);
                 for(AccessibilityNodeInfo n:root.findAccessibilityNodeInfosByViewId("android.miui:id/tv_device_name"))if(targetLabel(n))inspectCompletion(n);
             }
+            if(waitingForCompletion&&root!=null){
+                String pkg=str(root.getPackageName());
+                boolean transientWindow=Arrays.asList("local.codex.xiaominfcprobe","com.android.nfc","com.android.systemui","com.android.permissioncontroller").contains(pkg);
+                boolean left=!transientWindow&&!completion.sameWindow(root.getWindowId());
+                if(departure.release(now(),left)){releaseObserver("left original share window");return;}
+            }
             if(waitingForCompletion)schedule(150);return;
         }
         if(stepping||capturing)return;BridgeGate.Stage stage=gate.stage(now());if(stage==BridgeGate.Stage.IDLE)return;
@@ -196,6 +211,7 @@ public final class GalleryBridgeService extends AccessibilityService {
                     AccessibilityNodeInfo row=deviceRow(n);
                     trackedDeviceRow=row==null?null:AccessibilityNodeInfo.obtain(row);
                     waitingForCompletion=true;completion.start(now(),n.getWindowId());
+                    departure.clear();
                     if(!n.performAction(AccessibilityNodeInfo.ACTION_CLICK)){stop("未能点击我的笔记本，已停止");return;}
                     Log.i("XiaomiNfcBridge","NATIVE_PC_CLICKED; completion must be confirmed on PC");
                 }

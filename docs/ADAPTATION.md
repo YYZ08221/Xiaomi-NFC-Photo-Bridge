@@ -8,7 +8,7 @@
 
 ## 1. 原理：贴纸只是启动按钮
 
-NFC 贴纸保存一条自定义 URI。手机读到后，Android 按 URI 找到本应用的触发入口。贴纸不存照片，也不把照片通过 NFC 传给显示器；显示器只是粘贴位置，电脑无需为这张被动标签增加 NFC 读卡器。[Android NFC 标签分发说明](https://developer.android.com/develop/connectivity/nfc/nfc)
+NFC 贴纸保存自定义 URI 和指向本应用包名的 Android Application Record（AAR）。手机读到后，Android 按 URI 找到本应用的触发入口。贴纸不存照片，也不把照片通过 NFC 传给显示器；显示器只是粘贴位置，电脑无需为这张被动标签增加 NFC 读卡器。[Android NFC 标签分发说明](https://developer.android.com/develop/connectivity/nfc/nfc)
 
 ```mermaid
 flowchart TD
@@ -34,7 +34,7 @@ flowchart TD
 
 | 设备组合 | 当前状态与建议 |
 | --- | --- |
-| Xiaomi 15 + README 中的已测系统 + 能手动收图的 Windows 电脑 | 已验证自动分享；仍需实体 NFC 验收 |
+| Xiaomi 15 + README 中的已测系统 + 能手动收图的 Windows 电脑 | 已验证自动分享及实体 NFC；用户反馈断开调试后正常，仍需在自己的环境复测 |
 | 其他小米 / Redmi、其他 HyperOS / MIUI 版本 | 可优先评估。先确认系统相册手动分享，随后重新采集选择标记、设备行和完成状态 |
 | 非小米 Windows 台式机 / 组装机 | **本项目主要目标。** CPU、主板型号不是充分判据；先用官方 Windows 互联服务完成手动收图 |
 | 小米 / REDMI 笔记本 | 不属于目标用户；已支持官方互联/一碰传的机型直接使用原生功能 |
@@ -129,7 +129,7 @@ adb pull /data/local/tmp/bridge-ui.xml .\bridge-ui.xml
 | 选中标记位置、分享按钮、分享面板包名、设备行和状态节点、返回策略 | `GalleryBridgeService.java` | 小米相册/系统分享布局；选中标记位于有效视口上方四分之一 |
 | 完成状态文字、分享面板包名、120秒时限 | `CompletionWatch.java` | 同一窗口，匹配 `已完成` 等明确成功文字 |
 | 监听哪些应用和事件、截图能力 | `res/xml/bridge_accessibility.xml` | 监听包名是白名单，新增品牌时要一起更新 |
-| NFC URI 与入口过滤 | `AndroidManifest.xml`、`BridgeTriggerActivity.java`、`BridgeTagWriterActivity.java` | 三处 URI 一致；真实 NFC 入口会检查 NFC Tag extra |
+| NFC URI 与入口过滤 | `AndroidManifest.xml`、`BridgeTriggerActivity.java`、`BridgeTagWriterActivity.java` | 三处 URI 一致，AAR 包名匹配安装包；真实 NFC 入口会检查 NFC Tag extra |
 | 构建和本地测试 | `build_probe.py`、`tests/` | Windows 工具链、调试签名 |
 
 这些 Java 文件位于 `src/local/codex/xiaominfcprobe/`。改语言、系统分享包名时，不能只改表中的某一处；全文查找旧值并检查调用链。
@@ -168,7 +168,7 @@ adb pull /data/local/tmp/bridge-ui.xml .\bridge-ui.xml
 
 ### 第八步：写入自己的贴纸
 
-按 README 的写入流程操作，先确认贴纸可写、未锁定。写入后先拿在手上测试，再固定到目标位置。贴纸无需写入个人蓝牙地址；当前写的是固定应用 URI。
+按 README 的写入流程操作，先确认贴纸可写、未锁定。写入后先拿在手上测试，再固定到目标位置。贴纸无需写入个人蓝牙地址；当前写入固定应用 URI 和应用包名 AAR。使用新版写入界面，不要只用通用写卡工具写一条网址。
 
 没有实体标签时，只能报告“自动发送已验证，NFC 尚未验证”。不能用开发者模式测试冒充碰贴纸成功。
 
@@ -234,6 +234,6 @@ adb pull /data/local/tmp/bridge-ui.xml .\bridge-ui.xml
 | 电脑收到但还停在分享页 | 实际状态资源文字、状态节点、窗口ID、定时器是否被刷新推迟 |
 | 手机临时截图没删 | 是否确认了成功；私有目录不是相册，需区分；失败时保留是预期行为 |
 | 手机说不允许模拟按键 | 不反复尝试 ADB 注入，使用已获用户授权的无障碍控件操作 |
-| NFC触发失败但ADB测试成功 | 标签NDEF内容、NFC开关、解锁状态、默认处理应用及目标系统分发行为 |
+| NFC触发失败但ADB测试成功 | 标签是否包含URI与AAR、包名是否一致、NFC开关、解锁状态、无障碍服务、默认处理应用及目标系统分发行为 |
 
 适配结果建议包含手机型号、系统版本、相关软件版本、已通过项和未通过项。提交 Issue 前脱敏，避免附上个人照片、联系人、完整通知或签名密钥。

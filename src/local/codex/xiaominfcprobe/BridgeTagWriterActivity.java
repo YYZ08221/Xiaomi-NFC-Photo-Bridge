@@ -11,12 +11,15 @@ public final class BridgeTagWriterActivity extends Activity implements NfcAdapte
     protected void onPause(){armed=false;if(nfc!=null)nfc.disableReaderMode(this);super.onPause();}
     public void onTagDiscovered(Tag tag){
         if(!armed)return;armed=false;
-        NdefMessage message=new NdefMessage(new NdefRecord[]{NdefRecord.createUri(Uri.parse("xiaomi-photo-bridge://send/desk-1"))});
+        NdefMessage message=new NdefMessage(new NdefRecord[]{
+            NdefRecord.createUri(Uri.parse("xiaomi-photo-bridge://send/desk-1")),
+            NdefRecord.createApplicationRecord(getPackageName())
+        });
         try{
             Ndef tech=Ndef.get(tag);
-            if(tech!=null){try{tech.connect();if(!tech.isWritable())throw new Exception("贴纸不可写");if(tech.getMaxSize()<message.toByteArray().length)throw new Exception("贴纸容量不足");tech.writeNdefMessage(message);}finally{tech.close();}}
+            if(tech!=null){try{tech.connect();if(!tech.isWritable())throw new Exception("贴纸不可写");if(tech.getMaxSize()<message.toByteArray().length)throw new Exception("贴纸容量不足");tech.writeNdefMessage(message);NdefMessage readback=tech.getNdefMessage();if(readback==null||!java.util.Arrays.equals(message.toByteArray(),readback.toByteArray()))throw new Exception("写入后读回校验不一致，请重试");}finally{tech.close();}}
             else{NdefFormatable format=NdefFormatable.get(tag);if(format==null)throw new Exception("贴纸不支持 NDEF 写入");try{format.connect();format.format(message);}finally{format.close();}}
-            runOnUiThread(()->status.setText("写入成功。\n请先返回相册并选图，再碰此贴纸测试。\n本测试包固定发送到已配置的这台电脑。"));
+            runOnUiThread(()->status.setText("写入成功（网址 + Android 应用记录）。\n请退出此写入页面，返回相册选图，再碰贴纸。\n当前目标为系统分享中的“我的笔记本”。"));
         }catch(Exception e){runOnUiThread(()->status.setText("未完成写入："+e.getMessage()+"\n可重新按开始后再试。"));}
     }
 }
